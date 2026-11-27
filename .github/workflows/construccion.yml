@@ -1,0 +1,47 @@
+# Capa 2 - Construccion
+# restore (equivalente a npm install) -> build -> publish (carpeta de liberacion)
+name: Construccion - Piso Hospitalario
+
+on:
+  workflow_call:
+    inputs:
+      app-name:
+        type: string
+        required: true
+      dotnet-version:
+        type: string
+        required: true
+      solution-path:
+        type: string
+        required: true
+      api-project:
+        type: string
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Revision de codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET ${{ inputs.dotnet-version }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Restaurar dependencias (NuGet)
+        run: dotnet restore ${{ inputs.solution-path }}
+
+      - name: Compilar
+        run: dotnet build ${{ inputs.solution-path }} --no-restore --configuration Release
+
+      - name: Generar archivos de liberacion
+        run: dotnet publish ${{ inputs.api-project }} --no-build --configuration Release --output ./dist
+
+      - name: Guardar artefacto de liberacion
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app-name }}-dist
+          path: ./dist
+          retention-days: 5

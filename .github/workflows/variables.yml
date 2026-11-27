@@ -1,0 +1,55 @@
+# Capa 1 - Variables
+# No se ejecuta sola: espera el llamado (workflow_call) del principal.
+name: Variables - Piso Hospitalario
+
+on:
+  workflow_call:
+    outputs:
+      app-name:
+        value: ${{ jobs.variables.outputs.app-name }}
+      dotnet-version:
+        value: ${{ jobs.variables.outputs.dotnet-version }}
+      solution-path:
+        value: ${{ jobs.variables.outputs.solution-path }}
+      api-project:
+        value: ${{ jobs.variables.outputs.api-project }}
+      test-project:
+        value: ${{ jobs.variables.outputs.test-project }}
+
+# Variables globales (accesibles en todo el archivo)
+env:
+  APP_NAME: TAIH_PisoHospitalario
+
+jobs:
+  variables:
+    runs-on: ubuntu-latest
+    # Variables de entorno del job (solo viven dentro de este job)
+    env:
+      MENSAJE: "Iniciando pipeline del modulo Piso Hospitalario"
+    outputs:
+      app-name: ${{ steps.vars.outputs.app-name }}
+      dotnet-version: ${{ steps.vars.outputs.dotnet-version }}
+      solution-path: ${{ steps.vars.outputs.solution-path }}
+      api-project: ${{ steps.vars.outputs.api-project }}
+      test-project: ${{ steps.vars.outputs.test-project }}
+    steps:
+      - name: Revision de codigo
+        uses: actions/checkout@v4
+
+      - name: Imprimir mensaje
+        run: |
+          echo "$MENSAJE"
+          echo "Aplicacion: $APP_NAME"
+          echo "Rama origen: ${{ github.head_ref }} -> Rama destino: ${{ github.base_ref }}"
+
+      # Las variables PISO_* se crean en:
+      # Settings > Secrets and variables > Actions > Variables
+      # Si no existen, se usan los valores por defecto.
+      - name: Definir variables
+        id: vars
+        run: |
+          echo "app-name=$APP_NAME" >> "$GITHUB_OUTPUT"
+          echo "dotnet-version=${{ vars.PISO_DOTNET_VERSION || '10.0.x' }}" >> "$GITHUB_OUTPUT"
+          echo "solution-path=${{ vars.PISO_SOLUTION_PATH || '.' }}" >> "$GITHUB_OUTPUT"
+          echo "api-project=${{ vars.PISO_API_PROJECT || 'src/PisoHospitalario.API/PisoHospitalario.API.csproj' }}" >> "$GITHUB_OUTPUT"
+          echo "test-project=${{ vars.PISO_TEST_PROJECT || 'tests/PisoHospitalario.Tests/PisoHospitalario.Tests.csproj' }}" >> "$GITHUB_OUTPUT"

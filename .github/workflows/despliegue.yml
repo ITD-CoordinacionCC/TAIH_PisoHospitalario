@@ -1,0 +1,46 @@
+# Capa 4 - Despliegue
+# Solo corre si construccion y pruebas pasaron, y el PR va a staging o main (produccion).
+# Secretos (Settings > Secrets and variables > Actions > Secrets), nombres unicos del modulo:
+#   PISO_SSH_KEY, PISO_SSH_HOST, PISO_SSH_USER, PISO_DEPLOY_PATH
+name: Despliegue - Piso Hospitalario
+
+on:
+  workflow_call:
+    inputs:
+      app-name:
+        type: string
+        required: true
+      entorno:
+        type: string
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.entorno }}
+    env:
+      SSH_KEY: ${{ secrets.PISO_SSH_KEY }}
+    steps:
+      - name: Descargar artefacto de liberacion
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.app-name }}-dist
+          path: ./dist
+
+      - name: Mostrar entorno
+        run: |
+          echo "Desplegando ${{ inputs.app-name }} en: ${{ inputs.entorno }}"
+          ls -la ./dist
+
+      - name: Enviar archivos al servidor por SSH
+        if: env.SSH_KEY != ''
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.PISO_SSH_HOST }}" >> ~/.ssh/known_hosts
+          scp -r ./dist/* "${{ secrets.PISO_SSH_USER }}@${{ secrets.PISO_SSH_HOST }}:${{ secrets.PISO_DEPLOY_PATH }}/${{ inputs.entorno }}/"
+
+      - name: Aviso sin servidor configurado
+        if: env.SSH_KEY == ''
+        run: echo "No hay secretos PISO_SSH_* configurados; se omite el envio al servidor."

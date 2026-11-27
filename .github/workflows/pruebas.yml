@@ -1,0 +1,48 @@
+# Capa 3 - Pruebas unitarias
+# Sin cobertura: solo ejecucion (aprobadas / fallidas / total).
+# Las pruebas deben usar EF Core InMemory con semillas, porque GitHub no tiene la BD real.
+name: Pruebas - Piso Hospitalario
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        type: string
+        required: true
+      test-project:
+        type: string
+        required: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Revision de codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET ${{ inputs.dotnet-version }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Ejecutar pruebas unitarias
+        run: |
+          dotnet test ${{ inputs.test-project }} \
+            --configuration Release \
+            --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=resultados.trx" \
+            --results-directory ./resultados
+
+      - name: Resumen de pruebas
+        if: always()
+        run: |
+          archivo=$(find ./resultados -name '*.trx' | head -n 1)
+          if [ -n "$archivo" ]; then
+            total=$(grep -o 'total="[0-9]*"' "$archivo" | head -1 | grep -o '[0-9]*')
+            pasaron=$(grep -o 'passed="[0-9]*"' "$archivo" | head -1 | grep -o '[0-9]*')
+            fallaron=$(grep -o 'failed="[0-9]*"' "$archivo" | head -1 | grep -o '[0-9]*')
+            echo "### Pruebas - Piso Hospitalario" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Total | Pasaron | Fallaron |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| $total | $pasaron | $fallaron |" >> "$GITHUB_STEP_SUMMARY"
+          fi

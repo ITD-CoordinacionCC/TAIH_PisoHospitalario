@@ -1,0 +1,47 @@
+# Workflow principal - TAIH_PisoHospitalario
+# Se dispara con Pull Request (no con push) y orquesta las capas:
+# variables -> construccion -> pruebas -> despliegue
+name: Principal - Piso Hospitalario
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - staging
+      - main
+      - workflows
+  workflow_dispatch:
+
+jobs:
+  variables:
+    name: Capa 1 - Variables
+    uses: ./.github/workflows/variables.yml
+
+  construccion:
+    name: Capa 2 - Construccion
+    needs: variables
+    uses: ./.github/workflows/construccion.yml
+    with:
+      app-name: ${{ needs.variables.outputs.app-name }}
+      dotnet-version: ${{ needs.variables.outputs.dotnet-version }}
+      solution-path: ${{ needs.variables.outputs.solution-path }}
+      api-project: ${{ needs.variables.outputs.api-project }}
+
+  pruebas:
+    name: Capa 3 - Pruebas unitarias
+    needs: [variables, construccion]
+    uses: ./.github/workflows/pruebas.yml
+    with:
+      dotnet-version: ${{ needs.variables.outputs.dotnet-version }}
+      test-project: ${{ needs.variables.outputs.test-project }}
+
+  despliegue:
+    name: Capa 4 - Despliegue
+    needs: [variables, pruebas]
+    # Solo se despliega cuando el PR va hacia staging o main (produccion)
+    if: github.base_ref == 'staging' || github.base_ref == 'main'
+    uses: ./.github/workflows/despliegue.yml
+    with:
+      app-name: ${{ needs.variables.outputs.app-name }}
+      entorno: ${{ github.base_ref }}
+    secrets: inherit
